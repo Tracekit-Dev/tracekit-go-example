@@ -156,7 +156,7 @@ sdk.AddAttribute(span, "payment.method", "credit_card")
 ## Viewing Traces
 
 ### Local Development
-Open your TraceKit dashboard at: http://localhost:8081/traces
+Open your TraceKit dashboard at: http://api.tracekit.dev/traces
 
 ### Production
 View traces at: https://app.tracekit.dev
@@ -170,7 +170,7 @@ All configuration is done via environment variables (`.env` file):
 | `TRACEKIT_API_KEY` | Your TraceKit API key | (required) | `ctxio_abc123...` |
 | `SERVICE_NAME` | Name of this service | `go-test-app` | `my-api-service` |
 | `ENVIRONMENT` | Environment name | `development` | `production` |
-| `TRACEKIT_ENDPOINT` | TraceKit server endpoint | `localhost:8081` | `api.tracekit.dev` |
+| `TRACEKIT_ENDPOINT` | TraceKit server endpoint | `api.tracekit.dev` | `api.tracekit.dev` |
 | `TRACEKIT_USE_SSL` | Enable SSL/TLS | `false` | `true` |
 
 ## Code Structure
