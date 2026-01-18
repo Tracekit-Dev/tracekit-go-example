@@ -3,12 +3,10 @@ module github.com/Tracekit-Dev/test-app
 go 1.24.9
 
 require (
-	github.com/Tracekit-Dev/go-sdk v1.0.7
+	github.com/Tracekit-Dev/go-sdk v1.1.10
 	github.com/gin-gonic/gin v1.10.1
+	github.com/joho/godotenv v1.5.1
 )
-
-// Use local SDK for development
-replace github.com/Tracekit-Dev/go-sdk => ../go-sdk
 
 require (
 	github.com/bytedance/sonic v1.14.0 // indirect
@@ -31,7 +29,6 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
