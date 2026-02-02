@@ -19,6 +19,15 @@ import (
 var sdk *tracekit.SDK
 var httpClient *http.Client
 
+// Metrics
+var (
+	requestCounter       tracekit.Counter
+	activeRequestsGauge  tracekit.Gauge
+	requestDurationHisto tracekit.Histogram
+	orderCounter         tracekit.Counter
+	orderAmountHisto     tracekit.Histogram
+)
+
 // Service URLs for cross-service communication
 const (
 	nodeServiceURL    = "http://localhost:8084"
@@ -71,7 +80,15 @@ func main() {
 	// Create instrumented HTTP client for outgoing calls
 	httpClient = sdk.HTTPClient(nil)
 
+	// Initialize metrics
+	requestCounter = sdk.Counter("http.requests.total", map[string]string{"service": "go-test-app"})
+	activeRequestsGauge = sdk.Gauge("http.requests.active", nil)
+	requestDurationHisto = sdk.Histogram("http.request.duration", map[string]string{"unit": "ms"})
+	orderCounter = sdk.Counter("orders.total", nil)
+	orderAmountHisto = sdk.Histogram("order.amount", map[string]string{"currency": "usd"})
+
 	log.Println("✅ TraceKit SDK initialized successfully!")
+	log.Println("📊 Metrics initialized!")
 
 	// Setup Gin with tracing
 	r := gin.Default()
@@ -85,8 +102,18 @@ func main() {
 		})
 	})
 
-	// Endpoint with custom span
+	// Endpoint with custom span and metrics
 	r.GET("/api/users", func(c *gin.Context) {
+		start := time.Now()
+		activeRequestsGauge.Inc()
+		defer func() {
+			activeRequestsGauge.Dec()
+			duration := float64(time.Since(start).Milliseconds())
+			requestDurationHisto.Record(duration)
+		}()
+
+		requestCounter.Inc()
+
 		ctx := c.Request.Context()
 
 		ctx, span := sdk.StartSpan(ctx, "fetchUsers")
@@ -414,8 +441,18 @@ func main() {
 		})
 	})
 
-	// Endpoint with business logic
+	// Endpoint with business logic and metrics
 	r.POST("/api/order", func(c *gin.Context) {
+		start := time.Now()
+		activeRequestsGauge.Inc()
+		defer func() {
+			activeRequestsGauge.Dec()
+			duration := float64(time.Since(start).Milliseconds())
+			requestDurationHisto.Record(duration)
+		}()
+
+		requestCounter.Inc()
+
 		ctx := c.Request.Context()
 
 		ctx, span := sdk.StartSpan(ctx, "createOrder")
@@ -423,6 +460,10 @@ func main() {
 
 		orderID := fmt.Sprintf("ORD-%d", time.Now().Unix())
 		amount := rand.Float64() * 1000
+
+		// Track order metrics
+		orderCounter.Inc()
+		orderAmountHisto.Record(amount)
 
 		sdk.AddBusinessAttributes(span, map[string]interface{}{
 			"order.id":     orderID,
@@ -473,6 +514,43 @@ func main() {
 		c.JSON(500, gin.H{
 			"error":   "Internal Server Error",
 			"message": "Payment gateway timeout",
+		})
+	})
+
+	// Security test endpoint
+	r.GET("/security-test", func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		// Test sensitive data detection in snapshots
+		// NOTE: These are FAKE test values for demonstration purposes only
+		testVariables := map[string]interface{}{
+			"password":    "super_secret_password_123",
+			"api_key":     "test_key_abc123_NOT_REAL_demo_only",
+			"user_token":  "test_token_xyz789_fake_for_testing",
+			"credit_card": "4532015112830366",
+			"normal_var":  "This is just normal data",
+		}
+
+		sdk.CheckAndCaptureWithContext(ctx, "security-test-with-sensitive-data", testVariables)
+
+		c.JSON(200, gin.H{
+			"message": "Security test completed - check for security events",
+			"note":    "Sensitive data should be redacted in the snapshot",
+		})
+	})
+
+	// Metrics info endpoint
+	r.GET("/api/metrics", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "Metrics are being collected and sent to TraceKit",
+			"metrics": map[string]string{
+				"http.requests.total":     "Counter - Total HTTP requests",
+				"http.requests.active":    "Gauge - Currently active requests",
+				"http.request.duration":   "Histogram - Request duration in ms",
+				"orders.total":            "Counter - Total orders created",
+				"order.amount":            "Histogram - Order amounts in USD",
+			},
+			"note": "Metrics are flushed every 10 seconds or when 100 metrics are collected",
 		})
 	})
 

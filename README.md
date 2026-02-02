@@ -12,6 +12,7 @@ This test app showcases:
 - ✅ **Service dependency mapping** - Automatic service graph generation
 - ✅ **Business context tracking** - Add custom attributes (order IDs, amounts, etc.)
 - ✅ **Error handling with rich context** - Capture errors with full trace context
+- ✅ **Custom metrics collection** - Counters, gauges, and histograms for performance monitoring
 - ✅ **Code monitoring** - Live debugging capabilities (when enabled)
 
 ## Prerequisites
@@ -66,7 +67,7 @@ The server will start on `http://localhost:8082`
 | `/api/call-node` | GET | Call Node.js service | CLIENT spans, cross-service tracing |
 | `/api/chain` | GET | Chain call (Go → Node → Go) | Distributed tracing, service graph |
 | `/api/internal` | GET | Internal endpoint | Called by other services |
-| `/api/order` | POST | Create order | Business attributes, context tracking |
+| `/api/order` | POST | Create order | Business attributes, context tracking, custom metrics |
 | `/api/error` | GET | Trigger an error | Error recording with context |
 | `/health` | GET | Health check | Simple status endpoint |
 
@@ -151,6 +152,69 @@ sdk.AddAttribute(span, "order.id", orderID)
 sdk.AddAttribute(span, "customer.id", customerID)
 sdk.AddFloatAttribute(span, "order.amount", 299.99)
 sdk.AddAttribute(span, "payment.method", "credit_card")
+```
+
+## Metrics
+
+The app demonstrates custom metrics collection:
+
+### Counter Metrics
+Track incrementing values like request counts:
+
+```go
+// Create a counter
+requestCounter := sdk.Counter("http.requests.total", map[string]string{
+    "service": "go-test-app",
+})
+
+// Increment the counter
+requestCounter.Inc()
+
+// Or add a specific value
+requestCounter.Add(5)
+```
+
+### Gauge Metrics
+Track point-in-time values like active connections:
+
+```go
+// Create a gauge
+activeRequestsGauge := sdk.Gauge("http.requests.active", nil)
+
+// Set current value
+activeRequestsGauge.Set(10)
+
+// Increment/decrement
+activeRequestsGauge.Inc()
+activeRequestsGauge.Dec()
+```
+
+### Histogram Metrics
+Track value distributions like request durations:
+
+```go
+// Create a histogram
+requestDurationHisto := sdk.Histogram("http.request.duration", map[string]string{
+    "unit": "ms",
+})
+
+// Record a value
+duration := float64(time.Since(start).Milliseconds())
+requestDurationHisto.Record(duration)
+```
+
+### Example Usage
+See the `/api/order` endpoint for a complete example:
+
+```go
+start := time.Now()
+activeRequestsGauge.Inc()
+defer func() {
+    activeRequestsGauge.Dec()
+    duration := float64(time.Since(start).Milliseconds())
+    requestDurationHisto.Record(duration)
+}()
+requestCounter.Inc()
 ```
 
 ## Viewing Traces
